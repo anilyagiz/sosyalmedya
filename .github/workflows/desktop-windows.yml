@@ -28,6 +28,8 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=8192
       NEXT_TELEMETRY_DISABLED: '1'
       CHECKPOINT_DISABLE: '1'
+      # Only used by Prisma commands at build time; the app sets its own at runtime.
+      DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
       STAGE: C:\sm\stage
       OUT: C:\sm\out
     steps:

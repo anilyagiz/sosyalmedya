@@ -56,7 +56,7 @@ foreach ($f in $must) {
 }
 $engines = Get-ChildItem "$app\node_modules" -Recurse -Filter 'schema-engine*.exe' -ErrorAction SilentlyContinue
 if (-not $engines) { throw 'Prisma schema engine (schema-engine-windows.exe) is not in the package' }
-$queryEngine = Get-ChildItem "$app\node_modules\.prisma\client" -Filter 'query_engine-windows*' -ErrorAction SilentlyContinue
+$queryEngine = Get-ChildItem "$app\node_modules" -Recurse -Filter 'query_engine-windows*' -ErrorAction SilentlyContinue
 if (-not $queryEngine) { throw 'Prisma query engine for Windows is not in the package' }
 
 # Long paths break some installers and older Windows setups: report the worst.
