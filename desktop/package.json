@@ -1,0 +1,46 @@
+{
+  "name": "sosyalmedya",
+  "productName": "sosyalmedya",
+  "version": "1.0.0",
+  "description": "Sosyal medya gönderilerini tek yerden planlayın (Postiz tabanlı)",
+  "license": "AGPL-3.0",
+  "author": "sosyalmedya",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "pack": "electron-builder --win dir --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.sosyalmedya.app",
+    "productName": "sosyalmedya",
+    "executableName": "sosyalmedya",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": "dir",
+      "signAndEditExecutable": true
+    },
+    "electronLanguages": [
+      "tr",
+      "en-US"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
+  }
+}

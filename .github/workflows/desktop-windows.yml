@@ -1,0 +1,131 @@
+name: Desktop (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [desktop]
+    tags: ['desktop-v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Values the frontend build bakes in; they match desktop/src/config.js.
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:4007/api
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      FRONTEND_URL: http://localhost:4007
+      IS_GENERAL: 'true'
+      STORAGE_PROVIDER: local
+      NODE_OPTIONS: --max-old-space-size=8192
+      NEXT_TELEMETRY_DISABLED: '1'
+      CHECKPOINT_DISABLE: '1'
+      STAGE: C:\sm\stage
+      OUT: C:\sm\out
+    steps:
+      - name: Enable long paths for git
+        run: git config --system core.longpaths true
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.4'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.1
+          run_install: false
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content desktop/package.json | ConvertFrom-Json).version
+          if ('${{ github.ref_type }}' -eq 'tag') { $v = '${{ github.ref_name }}'.Replace('desktop-v', '') }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "version $v"
+
+      - name: Rebrand to sosyalmedya
+        run: node desktop/scripts/rebrand.mjs .
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Make sure Prisma engines are downloaded
+        shell: pwsh
+        run: |
+          node node_modules/prisma/build/index.js version
+          node node_modules/prisma/build/index.js validate --schema libraries/nestjs-libraries/src/database/prisma/schema.prisma
+
+      - name: Build Postiz
+        run: pnpm run build
+
+      - name: Collect runtime (node, postgres, redis, temporal)
+        shell: pwsh
+        run: ./desktop/scripts/prepare-runtime.ps1 -Out "$env:STAGE\runtime"
+
+      - name: Build launcher
+        working-directory: desktop
+        run: |
+          pnpm install --ignore-workspace --no-frozen-lockfile
+          pnpm run pack
+
+      - name: Assemble
+        shell: pwsh
+        run: ./desktop/scripts/assemble.ps1 -Repo . -Stage "$env:STAGE"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:OUT | Out-Null
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc /Q "/DStageDir=$((Resolve-Path $env:STAGE).Path)" "/DIconFile=$((Resolve-Path desktop/assets/icon.ico).Path)" "/DOutputDir=$((Resolve-Path $env:OUT).Path)" "/DAppVersion=${{ steps.version.outputs.version }}" desktop/installer/sosyalmedya.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Get-ChildItem $env:OUT | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB)}}
+
+      - name: Smoke test — install like a user and use the app
+        shell: pwsh
+        run: ./desktop/scripts/smoke-test.ps1 -Installer (Get-ChildItem "$env:OUT\*.exe" | Select-Object -First 1).FullName
+
+      - name: Logs
+        if: always()
+        shell: pwsh
+        run: |
+          $logs = "$env:LOCALAPPDATA\sosyalmedya\data\logs"
+          if (Test-Path $logs) {
+            foreach ($f in Get-ChildItem $logs -Filter *.log) {
+              Write-Host "::group::$($f.Name)"
+              Get-Content $f.FullName -Tail 200
+              Write-Host "::endgroup::"
+            }
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sosyalmedya-logs
+          path: C:\Users\runneradmin\AppData\Local\sosyalmedya\data\logs
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sosyalmedya-kurulum
+          path: C:\sm\out\*.exe
+          compression-level: 0
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        run: |
+          $exe = (Get-ChildItem "$env:OUT\*.exe" | Select-Object -First 1).FullName
+          gh release create '${{ github.ref_name }}' $exe --title "sosyalmedya ${{ steps.version.outputs.version }}" --notes "Windows için kurulum dosyası. İndirin, çift tıklayın, kurulum bitince sosyalmedya kendiliğinden açılır."

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'" />
+<title>sosyalmedya — Ayarlar</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="settings">
+    <h1>Sosyal ağ anahtarları</h1>
+    <p class="intro">
+      Bir hesabı bağlayabilmek için o sosyal ağın geliştirici sayfasında bir "uygulama" açıp oradan
+      aldığınız anahtarları buraya yapıştırmanız gerekir. Uygulamayı açarken sizden istenen
+      <b>yönlendirme (callback) adresini</b> aşağıdaki kutudan kopyalayın.
+      Bluesky, Telegram, Mastodon gibi bazı ağlar anahtarsız da bağlanabilir; bunlar için bir şey girmeniz gerekmez.
+    </p>
+
+    <label class="toggle"><input type="checkbox" id="openAtLogin" /> Windows açılınca sosyalmedya'yı arka planda başlat (zamanlanmış gönderiler için önerilir)</label>
+
+    <div id="providers"></div>
+
+    <div class="footer">
+      <button class="primary" id="save">Kaydet ve uygula</button>
+      <span class="saved" id="saved"></span>
+    </div>
+  </main>
+<script src="settings.js"></script>
+</body>
+</html>

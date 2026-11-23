@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'" />
+<title>sosyalmedya</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="status">
+    <img src="../assets/logo.svg" class="logo" alt="" />
+    <h1>sosyalmedya</h1>
+    <p id="message" class="message">Hazırlanıyor…</p>
+    <div id="bar" class="bar"><div></div></div>
+
+    <ul id="services" class="services"></ul>
+
+    <div class="actions">
+      <button id="open" class="primary" hidden>Uygulamayı aç</button>
+      <button id="retry" class="primary" hidden>Tekrar dene</button>
+      <button id="settings">Sosyal ağ anahtarları</button>
+      <button id="logs" class="link">Günlükler</button>
+      <button id="about" class="link">Hakkında</button>
+    </div>
+
+    <p class="hint" id="hint">
+      İlk açılış birkaç dakika sürebilir. Hazır olunca uygulama tarayıcınızda kendiliğinden açılır.
+    </p>
+  </main>
+<script src="status.js"></script>
+</body>
+</html>
