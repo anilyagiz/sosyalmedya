@@ -13,7 +13,9 @@ $launcherLog = Join-Path $env:LOCALAPPDATA 'sosyalmedya\data\logs\launcher.log'
 Write-Host "Installing $Installer"
 $p = Start-Process -FilePath $Installer -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/TASKS=desktopicon', "/LOG=$env:RUNNER_TEMP\install.log" -Wait -PassThru
 if ($p.ExitCode -ne 0) {
-  Select-String -Path "$env:RUNNER_TEMP\install.log" -Pattern 'error|fail|abort|exception|denied' | Select-Object -First 30 | ForEach-Object { Write-Host $_.Line }
+  Get-Content "$env:RUNNER_TEMP\install.log" |
+    Where-Object { $_ -notmatch 'Dest filename|Creating directory|Deleting (file|directory)|Time stamp|Installing the file|Skipping' } |
+    Select-Object -Last 60 | ForEach-Object { Write-Host $_ }
   throw "installer exited with $($p.ExitCode)"
 }
 if (-not (Test-Path $exe)) { throw "sosyalmedya.exe not installed at $exe" }

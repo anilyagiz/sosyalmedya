@@ -10,6 +10,9 @@
 #ifndef IconFile
   #error IconFile is required
 #endif
+#ifndef PayloadFile
+  #error PayloadFile is required
+#endif
 #ifndef OutputDir
   #define OutputDir "."
 #endif
@@ -57,13 +60,15 @@ Name: "desktopicon"; Description: "Masaüstüne kısayol oluştur"; GroupDescrip
 
 [InstallDelete]
 ; Remove files of the previous version so nothing stale is left behind.
+; {app}\app is removed in code (its paths can be too long for normal deletion).
 ; User data lives in %LOCALAPPDATA%\sosyalmedya\data and is never touched.
-Type: filesandordirs; Name: "{app}\app"
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\resources"
 
 [Files]
 Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; The app itself, packed as one archive and unpacked by 7-Zip after copying.
+Source: "{#PayloadFile}"; DestDir: "{tmp}"; DestName: "app.7z"; Flags: nocompression deleteafterinstall
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -79,7 +84,45 @@ Filename: "{app}\runtime\pgsql\bin\pg_ctl.exe"; Parameters: "stop -D ""{localapp
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 
+[Messages]
+tr.StatusExtractFiles=Dosyalar kopyalanıyor...
+
 [Code]
+procedure RemoveDirLong(Dir: String);
+var
+  ResultCode: Integer;
+begin
+  if DirExists(Dir) then
+    Exec(ExpandConstant('{cmd}'), '/c rmdir /s /q "\\?\' + Dir + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+procedure UnpackApp();
+var
+  ResultCode: Integer;
+  Target: String;
+begin
+  Target := ExpandConstant('{app}\app');
+  WizardForm.StatusLabel.Caption := 'Uygulama dosyaları açılıyor. Bu birkaç dakika sürebilir, lütfen bekleyin...';
+  WizardForm.FilenameLabel.Caption := '';
+  WizardForm.ProgressGauge.Style := npbstMarquee;
+  try
+    RemoveDirLong(Target);
+    if not Exec(ExpandConstant('{app}\runtime\7zip\7z.exe'),
+      'x -y -bso0 -bsp0 "-o' + Target + '" "' + ExpandConstant('{tmp}\app.7z') + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+      RaiseException('Uygulama dosyaları açılamadı (kod ' + IntToStr(ResultCode) + '). Diskte yeterli boş yer olduğundan emin olup kurulumu yeniden çalıştırın.');
+    SaveStringToFile(Target + '\.sosyalmedya-complete', '{#AppVersion}', False);
+  finally
+    WizardForm.ProgressGauge.Style := npbstNormal;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    UnpackApp();
+end;
+
 procedure StopRunningApp();
 var
   ResultCode: Integer;
@@ -98,11 +141,15 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   StopRunningApp();
+  RemoveDirLong(ExpandConstant('{app}\app'));
   Result := '';
 end;
 
-function InitializeUninstall(): Boolean;
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  StopRunningApp();
-  Result := True;
+  if CurUninstallStep = usUninstall then
+  begin
+    StopRunningApp();
+    RemoveDirLong(ExpandConstant('{app}\app'));
+  end;
 end;

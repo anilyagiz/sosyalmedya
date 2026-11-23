@@ -39,7 +39,9 @@ $skipDirs = @(
   "$Repo\apps\extension", "$Repo\apps\sdk", "$Repo\apps\commands",
   "$Repo\apps\frontend\.next\cache", "$Repo\node_modules\.cache", "$Repo\stage"
 )
-Robo $Repo $app $skipDirs @('*.map', '.env', '.env.*')
+# Type definitions, source maps and docs are never used at runtime; dropping
+# them removes a large share of the files and most of the very long paths.
+Robo $Repo $app $skipDirs @('*.map', '.env', '.env.*', '*.d.ts', '*.d.cts', '*.d.mts', '*.tsbuildinfo', '*.md', '*.markdown')
 
 # The upstream .env.example is not used on the desktop.
 Remove-Item -Force "$app\.env.example" -ErrorAction SilentlyContinue
@@ -85,3 +87,18 @@ Get-ChildItem "$app\node_modules" -Directory | ForEach-Object {
 
 $files = (Get-ChildItem $Stage -Recurse -File | Measure-Object -Property Length -Sum)
 Write-Host ("stage: {0:N0} files, {1:N0} MB" -f $files.Count, ($files.Sum / 1MB))
+
+# 4. Pack the app folder into one archive. Its deepest paths are longer than
+# what Windows installers can write; 7-Zip extracts them fine during setup.
+$sevenZipDir = 'C:\Program Files\7-Zip'
+if (-not (Test-Path "$sevenZipDir\7z.exe")) { throw '7-Zip not found on the runner' }
+New-Item -ItemType Directory -Force -Path "$Stage\runtime\7zip" | Out-Null
+Copy-Item "$sevenZipDir\7z.exe", "$sevenZipDir\7z.dll", "$sevenZipDir\License.txt" "$Stage\runtime\7zip\"
+$payload = Join-Path (Split-Path $Stage -Parent) 'payload'
+New-Item -ItemType Directory -Force -Path $payload | Out-Null
+Remove-Item -Force "$payload\app.7z" -ErrorAction SilentlyContinue
+& "$sevenZipDir\7z.exe" a -t7z -mx=5 -mmt=on -bso0 -bsp0 "$payload\app.7z" "$app\*"
+if ($LASTEXITCODE -ne 0) { throw "7z failed ($LASTEXITCODE)" }
+cmd /c rmdir /s /q "\\?\$app"
+if (Test-Path $app) { throw "could not remove $app after packing" }
+Write-Host ("app.7z: {0:N0} MB" -f ((Get-Item "$payload\app.7z").Length / 1MB))

@@ -390,6 +390,11 @@ class ServiceManager extends EventEmitter {
     for (const dir of [this.p.data, this.p.uploads, this.p.logs]) {
       fs.mkdirSync(dir, { recursive: true });
     }
+    if (!fs.existsSync(path.join(this.p.app, '.sosyalmedya-complete'))) {
+      throw new Error(
+        'Kurulum yarım kalmış görünüyor. Lütfen sosyalmedya kurulum dosyasını yeniden çalıştırın.'
+      );
+    }
     const busy = await this.checkPorts();
     if (busy.length) {
       // A previous run may have left Postgres behind; that one we can reuse.

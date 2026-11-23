@@ -116,7 +116,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $env:OUT | Out-Null
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
-          & $iscc /Q "/DStageDir=$((Resolve-Path $env:STAGE).Path)" "/DIconFile=$((Resolve-Path desktop/assets/icon.ico).Path)" "/DOutputDir=$((Resolve-Path $env:OUT).Path)" "/DAppVersion=${{ steps.version.outputs.version }}" desktop/installer/sosyalmedya.iss
+          & $iscc /Q "/DStageDir=$((Resolve-Path $env:STAGE).Path)" "/DIconFile=$((Resolve-Path desktop/assets/icon.ico).Path)" "/DOutputDir=$((Resolve-Path $env:OUT).Path)" "/DPayloadFile=C:\sm\payload\app.7z" "/DAppVersion=${{ steps.version.outputs.version }}" desktop/installer/sosyalmedya.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
           Get-ChildItem $env:OUT | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB)}}
 
