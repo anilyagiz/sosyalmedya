@@ -22,6 +22,7 @@ const copies = [
   ['logo.svg', 'apps/frontend/public/postiz.svg'],
   ['logo-text.svg', 'apps/frontend/public/logo-text.svg'],
   ['logo-text.svg', 'apps/frontend/public/postiz-text.svg'],
+  ['google.provider.tsx', 'apps/frontend/src/components/auth/providers/google.provider.tsx'],
 ];
 for (const [from, to] of copies) {
   copyFileSync(join(assets, from), join(root, to));
@@ -92,6 +93,21 @@ for (const file of targets) {
     files++;
     hits += count;
   }
+}
+
+// 3. With Google sign-in hidden, the "Continue With" / "or" labels around it
+// would point at nothing. Warn (not fail) if upstream changed these lines.
+for (const rel of [
+  'apps/frontend/src/components/auth/login.tsx',
+  'apps/frontend/src/components/auth/register.tsx',
+]) {
+  const file = join(root, rel);
+  const text = readFileSync(file, 'utf8');
+  const next = text
+    .replace("{t('continue_with', 'Continue With')}", '{null}')
+    .replace("{t('or', 'or')}", '{null}');
+  if (next === text) console.warn(`rebrand: sign-in labels not found in ${rel}`);
+  else writeFileSync(file, next);
 }
 
 console.log(`rebrand: ${copies.length} assets copied, ${hits} names replaced in ${files} files`);

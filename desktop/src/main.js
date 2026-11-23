@@ -71,7 +71,7 @@ function showStatus() {
   }
   statusWindow = new BrowserWindow({
     width: 520,
-    height: 600,
+    height: 660,
     resizable: false,
     title: 'sosyalmedya',
     icon: icon(),
