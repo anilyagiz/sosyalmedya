@@ -53,6 +53,16 @@ if ($left) {
 
 Write-Host 'Uninstalling'
 $uninstaller = Join-Path $installDir 'unins000.exe'
-$u = Start-Process -FilePath $uninstaller -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
-if ($u.ExitCode -ne 0) { throw "uninstaller exited with $($u.ExitCode)" }
+# The Inno uninstaller re-launches itself from %TEMP%, so wait for the
+# result (the install folder disappearing) instead of the first process.
+Start-Process -FilePath $uninstaller -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' | Out-Null
+$deadline = (Get-Date).AddMinutes(5)
+while ((Test-Path $exe) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 3 }
+Start-Sleep -Seconds 5
+if (Test-Path $installDir) {
+  Get-ChildItem $installDir -Recurse -Depth 2 | Select-Object -First 30 FullName
+  throw 'uninstall left files behind'
+}
+if (Test-Path $shortcut) { throw 'uninstall left the desktop shortcut' }
+if (-not (Test-Path (Join-Path $env:LOCALAPPDATA 'sosyalmedya\data\config.json'))) { throw 'uninstall removed user data' }
 Write-Host 'Smoke test finished: install, two starts, uninstall all OK'
