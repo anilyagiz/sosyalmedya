@@ -43,6 +43,19 @@ Invoke-Smoke 'first start'
 Clear-Content $launcherLog
 Invoke-Smoke 'second start'
 
+Write-Host '=== UI check (normal start, screenshots) ==='
+$proc = Start-Process -FilePath $exe -ArgumentList '--ui-check' -PassThru
+if (-not $proc.WaitForExit(10 * 60 * 1000)) {
+  Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+  throw 'UI check timed out'
+}
+if ($proc.ExitCode -ne 0) { throw "UI check failed (exit $($proc.ExitCode))" }
+foreach ($shot in 'ui-status.png', 'ui-login.png', 'ui-settings.png') {
+  $f = Join-Path $env:LOCALAPPDATA "sosyalmedya\data\logs\$shot"
+  if (-not (Test-Path $f)) { throw "screenshot missing: $shot" }
+}
+Write-Host 'UI check OK'
+
 # Nothing should be left running after the app quits.
 Start-Sleep -Seconds 5
 $left = Get-Process | Where-Object { $_.Path -and $_.Path.StartsWith($installDir) }

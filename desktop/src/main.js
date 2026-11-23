@@ -18,6 +18,9 @@ const proxy = require('./proxy');
 const smoke = require('./smoke');
 
 const SMOKE = process.argv.includes('--smoke-test');
+// CI only: start like a user would, then save screenshots of the status
+// window and the login page next to the logs and quit.
+const UI_CHECK = process.argv.includes('--ui-check');
 const HIDDEN = process.argv.includes('--hidden');
 const SOURCE_URL = 'https://github.com/anilyagiz/sosyalmedya';
 
@@ -193,9 +196,43 @@ async function boot() {
   createTray();
   if (!HIDDEN) showStatus();
   const ok = await startEverything();
+  if (UI_CHECK) {
+    await uiCheck(ok);
+    return;
+  }
   if (ok && !HIDDEN) {
     openInBrowser();
   }
+}
+
+async function uiCheck(ok) {
+  const out = cfg.paths().logs;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  try {
+    await wait(1500);
+    const statusImg = await statusWindow.webContents.capturePage();
+    fs.writeFileSync(path.join(out, 'ui-status.png'), statusImg.toPNG());
+    if (ok) {
+      const page = new BrowserWindow({ width: 1280, height: 860, show: true });
+      await page.loadURL(`${cfg.PUBLIC_URL}/auth/login`);
+      await wait(6000);
+      const img = await page.webContents.capturePage();
+      fs.writeFileSync(path.join(out, 'ui-login.png'), img.toPNG());
+      page.destroy();
+    }
+    await new Promise((r) => {
+      showSettings();
+      settingsWindow.webContents.once('did-finish-load', r);
+    });
+    await wait(1000);
+    const settingsImg = await settingsWindow.webContents.capturePage();
+    fs.writeFileSync(path.join(out, 'ui-settings.png'), settingsImg.toPNG());
+  } catch (err) {
+    manager.log(`ui-check: ${err.message}`);
+  }
+  quitting = true;
+  await shutdown();
+  app.exit(ok ? 0 : 1);
 }
 
 async function runSmoke() {
