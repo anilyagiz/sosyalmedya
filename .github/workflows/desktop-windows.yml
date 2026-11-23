@@ -2,6 +2,11 @@ name: Desktop (Windows)
 
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Kurulum dosyasını bir Release olarak yayınla'
+        type: boolean
+        default: false
   push:
     branches: [desktop]
     tags: ['desktop-v*']
@@ -158,8 +163,9 @@ jobs:
           compression-level: 0
 
       - name: Publish release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || inputs.release
         shell: pwsh
         run: |
           $exe = (Get-ChildItem "$env:OUT\*.exe" | Select-Object -First 1).FullName
-          gh release create '${{ github.ref_name }}' $exe --title "sosyalmedya ${{ steps.version.outputs.version }}" --notes "Windows için kurulum dosyası. İndirin, çift tıklayın, kurulum bitince sosyalmedya kendiliğinden açılır."
+          $tag = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { 'desktop-v${{ steps.version.outputs.version }}' }
+          gh release create $tag $exe --target '${{ github.sha }}' --latest --title "sosyalmedya ${{ steps.version.outputs.version }}" --notes "Windows için kurulum dosyası. İndirin, çift tıklayın, kurulum bitince sosyalmedya kendiliğinden açılır."
