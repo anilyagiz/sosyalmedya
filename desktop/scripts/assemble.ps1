@@ -68,10 +68,20 @@ $queryEngine = Get-ChildItem "$app\node_modules" -Recurse -Filter 'query_engine-
 if (-not $queryEngine) { throw 'Prisma query engine for Windows is not in the package' }
 
 # Long paths break some installers and older Windows setups: report the worst.
-$longest = Get-ChildItem $Stage -Recurse -File |
-  ForEach-Object { $_.FullName.Substring($Stage.Length).Length } |
-  Measure-Object -Maximum
-Write-Host "longest relative path: $($longest.Maximum) chars"
+$all = Get-ChildItem $Stage -Recurse -File
+$rel = $all | ForEach-Object { $_.FullName.Substring($Stage.Length) }
+Write-Host "longest relative paths:"
+$rel | Sort-Object Length -Descending | Select-Object -First 25 | ForEach-Object { Write-Host "  $($_.Length)  $_" }
+
+Write-Host "biggest packages:"
+Get-ChildItem "$app\node_modules" -Directory | ForEach-Object {
+  $dir = $_
+  $dirs = if ($dir.Name.StartsWith('@')) { Get-ChildItem $dir.FullName -Directory } else { @($dir) }
+  foreach ($d in $dirs) {
+    $m = Get-ChildItem $d.FullName -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum
+    [pscustomobject]@{ Name = $d.FullName.Substring("$app\node_modules\".Length); MB = [math]::Round($m.Sum / 1MB); Files = $m.Count }
+  }
+} | Sort-Object MB -Descending | Select-Object -First 40 | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
 
 $files = (Get-ChildItem $Stage -Recurse -File | Measure-Object -Property Length -Sum)
 Write-Host ("stage: {0:N0} files, {1:N0} MB" -f $files.Count, ($files.Sum / 1MB))

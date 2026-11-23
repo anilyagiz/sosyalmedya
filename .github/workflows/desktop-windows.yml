@@ -56,20 +56,45 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "version $v"
 
+      - name: Restore Postiz build
+        id: buildcache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/backend/dist
+            apps/orchestrator/dist
+            apps/frontend/.next
+          key: postiz-win-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'apps/backend/**', 'apps/orchestrator/**', 'apps/frontend/**', 'libraries/**', 'desktop/scripts/rebrand.mjs', 'desktop/rebrand/**') }}
+
       - name: Rebrand to sosyalmedya
         run: node desktop/scripts/rebrand.mjs .
 
       - name: Install dependencies
+        if: steps.buildcache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Make sure Prisma engines are downloaded
+        if: steps.buildcache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           node node_modules/prisma/build/index.js version
           node node_modules/prisma/build/index.js validate --schema libraries/nestjs-libraries/src/database/prisma/schema.prisma
 
       - name: Build Postiz
+        if: steps.buildcache.outputs.cache-hit != 'true'
         run: pnpm run build
+
+      - name: Save Postiz build
+        if: steps.buildcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            apps/backend/dist
+            apps/orchestrator/dist
+            apps/frontend/.next
+          key: ${{ steps.buildcache.outputs.cache-primary-key }}
 
       - name: Collect runtime (node, postgres, redis, temporal)
         shell: pwsh
