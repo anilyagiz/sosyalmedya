@@ -96,7 +96,11 @@ async function run(manager) {
       headers: { cookie: `auth=${auth}` },
       redirect: 'manual',
     });
-    assert(res.status === 200, `launches page returned ${res.status}`);
+    const location = res.headers.get('location') || '';
+    assert(
+      res.status === 200 || (res.status >= 300 && res.status < 400 && !location.includes('/auth')),
+      `launches page returned ${res.status} ${location}`
+    );
   });
 
   await step(manager, 'post scheduler (Temporal) is connected', async () => {

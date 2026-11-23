@@ -16,13 +16,21 @@ function Robo($from, $to, [string[]]$xd = @(), [string[]]$xf = @()) {
   $rargs = @($from, $to, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP', '/R:2', '/W:1', '/MT:16')
   if ($xd.Count) { $rargs += '/XD'; $rargs += $xd }
   if ($xf.Count) { $rargs += '/XF'; $rargs += $xf }
-  & robocopy @args | Out-Null
-  if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE): $from" }
+  $output = & robocopy @rargs 2>&1
+  if ($LASTEXITCODE -ge 8) {
+    $output | Select-Object -Last 40 | ForEach-Object { Write-Host $_ }
+    throw "robocopy failed ($LASTEXITCODE): $from -> $to"
+  }
   $global:LASTEXITCODE = 0
 }
 
 # 1. Electron launcher
-Robo "$Repo\desktop\dist\win-unpacked" $Stage
+$launcher = "$Repo\desktop\dist\win-unpacked"
+if (-not (Test-Path "$launcher\sosyalmedya.exe")) {
+  Get-ChildItem "$Repo\desktop\dist" -Recurse -Depth 1 | Select-Object FullName
+  throw "launcher build not found in $launcher"
+}
+Copy-Item -Recurse -Force "$launcher\*" $Stage
 
 # 2. Postiz
 $app = Join-Path $Stage 'app'

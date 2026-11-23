@@ -283,7 +283,6 @@ class ServiceManager extends EventEmitter {
         '--http-port', String(PORTS.temporal + 1),
         '--metrics-port', String(PORTS.temporal + 2),
         '--db-filename', this.p.temporalDb,
-        '--namespace', 'default',
         '--log-level', 'warn',
         '--dynamic-config-value', 'limit.maxIDLength=255',
         '--dynamic-config-value', 'system.forceSearchAttributesCacheRefreshOnRead=true',
