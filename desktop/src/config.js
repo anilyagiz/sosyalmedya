@@ -246,7 +246,7 @@ function appEnv(config) {
   const env = {
     ...process.env,
     NODE_ENV: 'production',
-    NODE_OPTIONS: `--require "${p.loopback}" --max-old-space-size=4096`,
+    NODE_OPTIONS: `--require "${slash(p.loopback)}" --max-old-space-size=4096`,
     DATABASE_URL: databaseUrl(config),
     REDIS_URL: `redis://127.0.0.1:${PORTS.redis}`,
     TEMPORAL_ADDRESS: `127.0.0.1:${PORTS.temporal}`,
